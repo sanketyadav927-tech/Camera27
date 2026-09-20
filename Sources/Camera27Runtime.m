@@ -73,7 +73,10 @@ BOOL Camera27SetZoom(UIViewController *controller, CGFloat zoom) {
 }
 
 BOOL Camera27HasTelephotoCamera(void) {
-    if (@available(iOS 10.0, *)) { for (AVCaptureDevice *device in [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo]) if (device.deviceType == AVCaptureDeviceTypeBuiltInTelephotoCamera) return YES; }
+    if (@available(iOS 10.0, *)) {
+        AVCaptureDeviceDiscoverySession *session = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera, AVCaptureDeviceTypeBuiltInTelephotoCamera] mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
+        for (AVCaptureDevice *device in session.devices) if (device.deviceType == AVCaptureDeviceTypeBuiltInTelephotoCamera) return YES;
+    }
     return NO;
 }
 

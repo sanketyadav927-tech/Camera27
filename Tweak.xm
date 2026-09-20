@@ -6,10 +6,13 @@
 static void Camera27TryInstall(void) {
     if (![Camera27Settings sharedSettings].enabled) return;
     dispatch_async(dispatch_get_main_queue(), ^{
-        for (UIWindow *window in UIApplication.sharedApplication.windows) {
-            if (window.hidden || !window.rootViewController) continue;
-            UIViewController *candidate = Camera27FindCameraController(window.rootViewController);
-            if (candidate) [[Camera27UI sharedInstance] attachToController:candidate];
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if (![scene isKindOfClass:UIWindowScene.class]) continue;
+            for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+                if (window.hidden || !window.rootViewController) continue;
+                UIViewController *candidate = Camera27FindCameraController(window.rootViewController);
+                if (candidate) [[Camera27UI sharedInstance] attachToController:candidate];
+            }
         }
     });
 }
