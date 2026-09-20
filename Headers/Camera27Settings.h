@@ -1,26 +1,13 @@
-//
-//  Camera27Settings.h
-//  Camera27
-//
-
 #import <Foundation/Foundation.h>
 
-NS_ASSUME_NONNULL_BEGIN
-
-#define kCamera27PrefsChangedNotification "com.yourname.camera27.prefschanged"
-#define kCamera27PrefsDomain @"com.yourname.camera27"
+#define kCamera27PrefsDomain @"com.sanketyadav927.camera27"
+#define kCamera27PrefsChangedNotification "com.sanketyadav927.camera27.prefschanged"
 
 @interface Camera27Settings : NSObject
-
-@property (nonatomic, assign) BOOL enabled;
-@property (nonatomic, assign) BOOL liquidGlassEnabled;
-@property (nonatomic, assign) BOOL animationsEnabled;
-@property (nonatomic, assign) BOOL hapticsEnabled;
-@property (nonatomic, assign) NSInteger appearanceMode; // 0=Dark, 1=Light, 2=System
-
+@property (nonatomic) BOOL enabled;
+@property (nonatomic) BOOL glassEnabled;
+@property (nonatomic) BOOL animationsEnabled;
+@property (nonatomic) BOOL hapticsEnabled;
 + (instancetype)sharedSettings;
 - (void)loadPreferences;
-
 @end
-
-NS_ASSUME_NONNULL_END

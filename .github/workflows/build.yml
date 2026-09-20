@@ -1,56 +1,35 @@
-name: Build Camera27 Rootless .deb
+name: Build Camera27 rootless package
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main]
   pull_request:
-    branches: [ main, master ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-latest
-
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Install System Dependencies
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang make perl dpkg-dev ldid git
+      - name: Install Theos and SDKs
         run: |
-          brew install dpkg ldid
-
-      - name: Setup Theos
+          git clone --depth=1 --recursive https://github.com/theos/theos.git "$HOME/theos"
+          git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+      - name: Build rootless arm64 package
+        run: make clean && make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+      - name: Validate package
         run: |
-          git clone --recursive https://github.com/theos/theos.git ~/theos
-          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-
-      - name: Setup Patched iOS SDKs
-        run: |
-          rm -rf ~/theos/sdks
-          git clone --depth=1 https://github.com/theos/sdks.git ~/theos/sdks
-          echo "Available SDKs:"
-          ls -la ~/theos/sdks
-
-      - name: Build Rootless Package
-        run: |
-          export THEOS=$HOME/theos
-          make clean
-          make package THEOS_PACKAGE_SCHEME=rootless FINALPACKAGE=1
-
-      - name: Validate .deb Package
-        run: |
-          DEB_FILE=$(ls -t packages/*.deb | head -n 1)
-          if [ ! -f "$DEB_FILE" ]; then
-            echo "Error: No .deb file generated in packages directory!"
-            exit 1
-          fi
-          echo "Generated .deb: $DEB_FILE"
-          dpkg-deb -I "$DEB_FILE"
-          dpkg-deb -c "$DEB_FILE"
-          cp "$DEB_FILE" packages/Camera27-rootless.deb
-
-      - name: Upload Rootless .deb Artifact
-        uses: actions/upload-artifact@v4
+          deb=$(find packages -maxdepth 1 -name '*.deb' -print -quit)
+          test -n "$deb"
+          dpkg-deb --info "$deb"
+          dpkg-deb --contents "$deb"
+          dpkg-deb --fsys-tarfile "$deb" | tar -tf - | grep -q 'Library/MobileSubstrate/DynamicLibraries/Camera27.dylib'
+          cp "$deb" packages/Camera27-rootless.deb
+      - uses: actions/upload-artifact@v4
         with:
           name: Camera27-rootless
           path: packages/Camera27-rootless.deb
