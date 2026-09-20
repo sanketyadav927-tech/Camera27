@@ -1,0 +1,10 @@
+Package: com.yourname.camera27
+Name: Camera27
+Depends: mobilesubstrate (>= 0.9.5000), preferenceloader
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Modern iOS 27-inspired glassmorphic Camera UI for iOS 16 (iPhone 8 Plus, Rootless Dopamine).
+Maintainer: Camera27 Developer
+Author: Camera27 Developer
+Section: Tweaks
+Tag: role::developer

@@ -1,0 +1,75 @@
+name: Build Camera27 Rootless .deb
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            fakeroot \
+            git \
+            curl \
+            perl \
+            zstd \
+            unzip \
+            libtinfo5 \
+            xz-utils
+
+      - name: Setup Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git ~/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+      - name: Setup iOS SDK
+        run: |
+          mkdir -p ~/theos/sdks
+          curl -L -o ~/theos/sdks/iPhoneOS16.5.sdk.tar.xz https://github.com/theos/sdks/releases/download/v16.5/iPhoneOS16.5.sdk.tar.xz || \
+          git clone --depth=1 https://github.com/theos/sdks.git ~/theos/sdks-repo && cp -r ~/theos/sdks-repo/iPhoneOS*.sdk ~/theos/sdks/ || true
+          if [ -f ~/theos/sdks/iPhoneOS16.5.sdk.tar.xz ]; then
+            tar -xf ~/theos/sdks/iPhoneOS16.5.sdk.tar.xz -C ~/theos/sdks/
+          fi
+
+      - name: Setup iOS Arm64 Linux Toolchain
+        run: |
+          mkdir -p ~/theos/toolchain/linux/iphone
+          curl -L -o /tmp/toolchain.tar.gz https://github.com/CRKatri/llvm-project/releases/download/12.0.0-theos/ios-arm64-toolchain-linux.tar.gz
+          tar -xzf /tmp/toolchain.tar.gz -C ~/theos/toolchain/linux/iphone/
+
+      - name: Build Rootless Package
+        run: |
+          export THEOS=$HOME/theos
+          make clean
+          make package THEOS_PACKAGE_SCHEME=rootless FINALPACKAGE=1
+
+      - name: Validate .deb Package
+        run: |
+          DEB_FILE=$(ls -t packages/*.deb | head -n 1)
+          if [ ! -f "$DEB_FILE" ]; then
+            echo "Error: No .deb file generated in packages directory!"
+            exit 1
+          fi
+          echo "Generated .deb: $DEB_FILE"
+          dpkg-deb -I "$DEB_FILE"
+          dpkg-deb -c "$DEB_FILE"
+          cp "$DEB_FILE" packages/Camera27-rootless.deb
+
+      - name: Upload Rootless .deb Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Camera27-rootless
+          path: packages/Camera27-rootless.deb
+          if-no-files-found: error
