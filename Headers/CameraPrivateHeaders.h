@@ -46,8 +46,12 @@ typedef NS_ENUM(NSInteger, CAMDevicePosition) {
 @class CAMTimerButton;
 
 @interface CUShutterButton : UIButton
+// IMPORTANT: Do NOT redeclare 'state' here.
+// UIControl already declares:
+//   @property (nonatomic, readonly) UIControlState state;
+// Redeclaring it as 'NSInteger' (signed, assign) causes
+// -Werror,-Wincompatible-property-type and breaks compilation.
 @property (nonatomic, assign) NSInteger mode;
-@property (nonatomic, assign) NSInteger state;
 @property (nonatomic, assign, getter=isSpinning) BOOL spinning;
 - (void)setMode:(NSInteger)mode animated:(BOOL)animated;
 @end
