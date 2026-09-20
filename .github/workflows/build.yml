@@ -22,6 +22,7 @@ jobs:
       - name: Install Theos and SDKs
         run: |
           git clone --depth=1 --recursive https://github.com/theos/theos.git "$HOME/theos"
+          rm -rf "$HOME/theos/sdks"
           git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
       - name: Build rootless arm64 package
