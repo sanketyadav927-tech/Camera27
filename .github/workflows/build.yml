@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: macos-latest
 
     steps:
       - name: Checkout Code
@@ -17,43 +17,19 @@ jobs:
 
       - name: Install System Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            fakeroot \
-            git \
-            curl \
-            perl \
-            zstd \
-            unzip \
-            xz-utils
-          # Support both libtinfo5 (Ubuntu 22.04) and libtinfo6 (Ubuntu 24.04)
-          sudo apt-get install -y --no-install-recommends libtinfo5 || sudo apt-get install -y --no-install-recommends libtinfo6 || true
-          # Compatibility symlinks for older toolchain binaries
-          sudo ln -sf /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/x86_64-linux-gnu/libtinfo.so.5 || true
-          sudo ln -sf /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5 || true
+          brew install dpkg ldid
 
       - name: Setup Theos
         run: |
           git clone --recursive https://github.com/theos/theos.git ~/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Setup iOS SDK
+      - name: Setup Patched iOS SDKs
         run: |
           rm -rf ~/theos/sdks
           git clone --depth=1 https://github.com/theos/sdks.git ~/theos/sdks
           echo "Available SDKs:"
           ls -la ~/theos/sdks
-
-      - name: Setup iOS Arm64 Linux Toolchain
-        run: |
-          mkdir -p ~/theos/toolchain/linux/iphone
-          curl -fsSL -o /tmp/toolchain.tar.gz https://github.com/CRKatri/llvm-project/releases/download/12.0.0-theos/ios-arm64-toolchain-linux.tar.gz
-          # Extract directly or with strip-components if archive contains top-level directory
-          tar -xzf /tmp/toolchain.tar.gz -C ~/theos/toolchain/linux/iphone/ --strip-components=1 2>/dev/null || \
-          tar -xzf /tmp/toolchain.tar.gz -C ~/theos/toolchain/linux/iphone/
-          echo "Toolchain binaries:"
-          ls -la ~/theos/toolchain/linux/iphone/bin/ || true
 
       - name: Build Rootless Package
         run: |
