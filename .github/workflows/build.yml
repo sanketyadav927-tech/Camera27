@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Code
@@ -26,8 +26,12 @@ jobs:
             perl \
             zstd \
             unzip \
-            libtinfo5 \
             xz-utils
+          # Support both libtinfo5 (Ubuntu 22.04) and libtinfo6 (Ubuntu 24.04)
+          sudo apt-get install -y --no-install-recommends libtinfo5 || sudo apt-get install -y --no-install-recommends libtinfo6 || true
+          # Compatibility symlinks for older toolchain binaries
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/x86_64-linux-gnu/libtinfo.so.5 || true
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5 || true
 
       - name: Setup Theos
         run: |
@@ -36,18 +40,20 @@ jobs:
 
       - name: Setup iOS SDK
         run: |
-          mkdir -p ~/theos/sdks
-          curl -L -o ~/theos/sdks/iPhoneOS16.5.sdk.tar.xz https://github.com/theos/sdks/releases/download/v16.5/iPhoneOS16.5.sdk.tar.xz || \
-          git clone --depth=1 https://github.com/theos/sdks.git ~/theos/sdks-repo && cp -r ~/theos/sdks-repo/iPhoneOS*.sdk ~/theos/sdks/ || true
-          if [ -f ~/theos/sdks/iPhoneOS16.5.sdk.tar.xz ]; then
-            tar -xf ~/theos/sdks/iPhoneOS16.5.sdk.tar.xz -C ~/theos/sdks/
-          fi
+          rm -rf ~/theos/sdks
+          git clone --depth=1 https://github.com/theos/sdks.git ~/theos/sdks
+          echo "Available SDKs:"
+          ls -la ~/theos/sdks
 
       - name: Setup iOS Arm64 Linux Toolchain
         run: |
           mkdir -p ~/theos/toolchain/linux/iphone
-          curl -L -o /tmp/toolchain.tar.gz https://github.com/CRKatri/llvm-project/releases/download/12.0.0-theos/ios-arm64-toolchain-linux.tar.gz
+          curl -fsSL -o /tmp/toolchain.tar.gz https://github.com/CRKatri/llvm-project/releases/download/12.0.0-theos/ios-arm64-toolchain-linux.tar.gz
+          # Extract directly or with strip-components if archive contains top-level directory
+          tar -xzf /tmp/toolchain.tar.gz -C ~/theos/toolchain/linux/iphone/ --strip-components=1 2>/dev/null || \
           tar -xzf /tmp/toolchain.tar.gz -C ~/theos/toolchain/linux/iphone/
+          echo "Toolchain binaries:"
+          ls -la ~/theos/toolchain/linux/iphone/bin/ || true
 
       - name: Build Rootless Package
         run: |
