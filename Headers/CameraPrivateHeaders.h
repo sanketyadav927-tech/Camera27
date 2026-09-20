@@ -5,13 +5,20 @@
 //  Defensive interface definitions for iOS 16 CameraUI.framework
 //  Targeting iPhone 8 Plus (iOS 16.0 - 16.7.16, arm64)
 //
+//  RULE: Every private class that is assigned to a typed variable
+//  (UIView *, UIButton *, etc.) MUST have a full @interface declaration
+//  specifying its superclass. A bare @class forward-declaration is opaque
+//  (NSObject-width) and causes -Wincompatible-pointer-types hard errors.
+//
 
 #import <UIKit/UIKit.h>
 #import <AVFoundation/AVFoundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
+// ---------------------------------------------------------------------------
 // Camera Modes (iOS 16 CameraUI)
+// ---------------------------------------------------------------------------
 typedef NS_ENUM(NSInteger, CAMMode) {
     CAMModePhoto       = 0,
     CAMModeVideo       = 1,
@@ -28,29 +35,16 @@ typedef NS_ENUM(NSInteger, CAMDevicePosition) {
     CAMDevicePositionFront = 1
 };
 
-// Forward declare private CameraUI classes
-@class CAMViewfinderView;
-@class CAMBottomBar;
-@class CAMTopBar;
-@class CAMControlDrawer;
-@class CAMShutterButton;
-@class CUShutterButton;
-@class CAMFlipButton;
-@class CAMImageWell;
-@class CAMModeDial;
-@class CAMModeSelector;
-@class CAMZoomControl;
-@class CAMCaptureController;
-@class CAMFlashButton;
-@class CAMLivePhotoButton;
-@class CAMTimerButton;
+// ---------------------------------------------------------------------------
+// Private CameraUI class interfaces (full declarations, not just @class)
+// ---------------------------------------------------------------------------
 
-@interface CUShutterButton : UIButton
+// CUShutterButton — base shutter control inheriting from UIButton.
 // IMPORTANT: Do NOT redeclare 'state' here.
-// UIControl already declares:
-//   @property (nonatomic, readonly) UIControlState state;
-// Redeclaring it as 'NSInteger' (signed, assign) causes
-// -Werror,-Wincompatible-property-type and breaks compilation.
+// UIControl already declares: @property (nonatomic, readonly) UIControlState state;
+// (UIControlState = NSUInteger). Redeclaring it as NSInteger (signed, assign)
+// causes -Werror,-Wincompatible-property-type and aborts compilation.
+@interface CUShutterButton : UIButton
 @property (nonatomic, assign) NSInteger mode;
 @property (nonatomic, assign, getter=isSpinning) BOOL spinning;
 - (void)setMode:(NSInteger)mode animated:(BOOL)animated;
@@ -66,6 +60,29 @@ typedef NS_ENUM(NSInteger, CAMDevicePosition) {
 @property (nonatomic, readonly, nullable) UIImageView *thumbnailImageView;
 - (void)setThumbnailImage:(nullable UIImage *)image animated:(BOOL)animated;
 - (nullable UIImage *)thumbnailImage;
+@end
+
+// CAMControlDrawer is a UIView subclass (drawer panel for creative controls).
+// Must be declared as UIView subclass so assignments to UIView * compile cleanly.
+@interface CAMControlDrawer : UIView
+@end
+
+// CAMModeDial is a UIView subclass.
+@interface CAMModeDial : UIView
+@end
+
+// CAMModeSelector is a UIView subclass.
+@interface CAMModeSelector : UIView
+@end
+
+// CAMFlashButton, CAMLivePhotoButton, CAMTimerButton are UIButton subclasses.
+@interface CAMFlashButton : UIButton
+@end
+
+@interface CAMLivePhotoButton : UIButton
+@end
+
+@interface CAMTimerButton : UIButton
 @end
 
 @interface CAMZoomControl : UIControl

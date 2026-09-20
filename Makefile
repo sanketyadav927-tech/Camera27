@@ -21,15 +21,17 @@ Camera27_FILES = Tweak.xm \
 
 Camera27_FRAMEWORKS = UIKit AVFoundation Photos CoreGraphics QuartzCore AudioToolbox
 
-# Warning suppression flags:
-# -Wno-incompatible-property-type  : prevents -Werror on private header overrides
-# -Wno-deprecated-declarations     : some private selectors use deprecated attrs
-# -Wno-objc-protocol-method-implementation : forward-declared category methods
-# -Wno-unguarded-availability-new  : runtime selectors on iOS 16 only
+# Warning suppression flags — required for iOS private framework headers:
+# -Wno-incompatible-property-type  : private header property attrs vs UIKit base class
+# -Wno-incompatible-pointer-types  : forward-declared private classes assigned to typed ptrs
+# -Wno-deprecated-declarations     : private selectors may carry deprecated attributes
+# -Wno-objc-protocol-method-implementation : forward-declared category method stubs
+# -Wno-unguarded-availability-new  : iOS 16 selectors without @available guards
 Camera27_CFLAGS = -fobjc-arc -IHeaders \
                   -Wno-unused-variable \
                   -Wno-unused-function \
                   -Wno-incompatible-property-type \
+                  -Wno-incompatible-pointer-types \
                   -Wno-deprecated-declarations \
                   -Wno-objc-protocol-method-implementation \
                   -Wno-unguarded-availability-new
