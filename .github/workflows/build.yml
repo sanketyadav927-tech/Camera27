@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential clang make perl dpkg-dev git libssl-dev libplist-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang make perl dpkg-dev fakeroot git curl xz-utils libssl-dev libplist-dev
       - name: Install ldid
         run: |
           git clone --depth=1 https://github.com/ProcursusTeam/ldid.git /tmp/ldid
@@ -24,6 +24,7 @@ jobs:
           git clone --depth=1 --recursive https://github.com/theos/theos.git "$HOME/theos"
           rm -rf "$HOME/theos/sdks"
           git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
+          curl -fsSL https://github.com/L1ghtmann/llvm-project/releases/latest/download/iOSToolchain-x86_64.tar.xz | tar -xJ -C "$HOME/theos/toolchain/"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
       - name: Build rootless arm64 package
         run: make clean && make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
