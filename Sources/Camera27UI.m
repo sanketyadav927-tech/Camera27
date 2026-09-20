@@ -228,7 +228,7 @@ static void _setHDR(AVCaptureDevice *dev, BOOL on) {
 
     // Filter / Creative button (left-most)
     self.filterButton = [self _glassCircleButton:@"f" sfSymbol:nil size:40 x:22 y:rowY + 18];
-    self.filterButton.titleLabel.font = [UIFont italicSystemFontOfSize:19 weight:UIFontWeightBold];
+    self.filterButton.titleLabel.font = [UIFont fontWithDescriptor:[[UIFontDescriptor preferredFontDescriptorWithTextStyle:UIFontTextStyleBody] fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitBold | UIFontDescriptorTraitItalic] size:19];
     [self.filterButton setTitleColor:[UIColor colorWithRed:0.95 green:0.78 blue:0.28 alpha:1] forState:UIControlStateNormal];
     [self.filterButton addTarget:self action:@selector(_filterPressed) forControlEvents:UIControlEventTouchUpInside];
     [deck addSubview:self.filterButton];
