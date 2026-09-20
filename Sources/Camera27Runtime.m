@@ -54,6 +54,7 @@ BOOL Camera27PerformNamedMode(UIViewController *controller, NSString *modeName) 
     NSString *wanted = modeName.lowercaseString;
     for (UIView *view in Camera27AllViews(controller.view)) {
         if (![view isKindOfClass:UIControl.class]) continue;
+        if ([NSStringFromClass(view.class) containsString:@"Camera27"]) continue;
         UIControl *control = (UIControl *)view;
         NSString *text = [NSString stringWithFormat:@"%@ %@ %@", control.accessibilityIdentifier ?: @"", control.accessibilityLabel ?: @"", [(id)control titleForState:UIControlStateNormal] ?: @""].lowercaseString;
         if ([text containsString:wanted]) { [control sendActionsForControlEvents:UIControlEventTouchUpInside]; return YES; }
