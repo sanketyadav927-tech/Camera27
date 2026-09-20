@@ -1,5 +1,9 @@
 #import <UIKit/UIKit.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef NS_ENUM(NSInteger, Camera27Action) {
     Camera27ActionShutter, Camera27ActionFlip, Camera27ActionGallery,
     Camera27ActionFlash, Camera27ActionLivePhoto, Camera27ActionTimer
@@ -13,3 +17,7 @@ BOOL Camera27SetZoom(UIViewController *controller, CGFloat zoom);
 BOOL Camera27HasTelephotoCamera(void);
 void Camera27HideVerifiedStockChrome(UIViewController *controller);
 void Camera27LogDiagnosticReport(UIViewController *controller);
+
+#ifdef __cplusplus
+}
+#endif
