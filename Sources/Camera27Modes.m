@@ -54,12 +54,16 @@ static const NSInteger kModeCount = 6;
         NSString *title = kModes[i].title;
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
         btn.tag = i;
-        [btn setTitle:title forState:UIControlStateNormal];
-        btn.titleLabel.font = [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
-        [btn setTitleColor:[UIColor colorWithWhite:0.65 alpha:1] forState:UIControlStateNormal];
-        btn.titleLabel.letterSpacing = 0.5;
+        // UILabel has no letterSpacing property; use NSAttributedString with NSKernAttributeName
+        NSAttributedString *attrTitle = [[NSAttributedString alloc] initWithString:title attributes:@{
+            NSFontAttributeName:           [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold],
+            NSForegroundColorAttributeName: [UIColor colorWithWhite:0.65 alpha:1],
+            NSKernAttributeName:           @(0.5)
+        }];
+        [btn setAttributedTitle:attrTitle forState:UIControlStateNormal];
 
-        CGSize sz = [title sizeWithAttributes:@{NSFontAttributeName: btn.titleLabel.font}];
+        CGSize sz = [title sizeWithAttributes:@{NSFontAttributeName: btn.titleLabel.font, NSKernAttributeName: @(0.5)}];
+
         CGFloat w = sz.width + 18;
         btn.frame = CGRectMake(x, 0, w, h);
         [btn addTarget:self action:@selector(_modeTap:) forControlEvents:UIControlEventTouchUpInside];
@@ -100,12 +104,19 @@ static const NSInteger kModeCount = 6;
     UIColor *gold = [UIColor colorWithRed:0.95 green:0.78 blue:0.28 alpha:1];
     UIColor *dim  = [UIColor colorWithWhite:0.62 alpha:1];
 
-    void(^upd)(void) = ^{
+        void(^upd)(void) = ^{
         for (NSInteger i = 0; i < (NSInteger)self.buttons.count; i++) {
             UIButton *b = self.buttons[i];
             BOOL sel = (i == idx);
-            [b setTitleColor:sel ? gold : dim forState:UIControlStateNormal];
-            b.titleLabel.font = [UIFont systemFontOfSize:12.5 weight:sel ? UIFontWeightBold : UIFontWeightMedium];
+            UIColor *color  = sel ? gold : dim;
+            UIFontWeight wt = sel ? UIFontWeightBold : UIFontWeightMedium;
+            NSString *str   = kModes[i].title;
+            NSAttributedString *attr = [[NSAttributedString alloc] initWithString:str attributes:@{
+                NSFontAttributeName:           [UIFont systemFontOfSize:12.5 weight:wt],
+                NSForegroundColorAttributeName: color,
+                NSKernAttributeName:           @(0.5)
+            }];
+            [b setAttributedTitle:attr forState:UIControlStateNormal];
         }
         UIButton *selBtn = self.buttons[idx];
         // Move dot to center of selected button
