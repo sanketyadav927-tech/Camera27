@@ -2,23 +2,24 @@
 //  CameraPrivateHeaders.h
 //  Camera27
 //
-//  Defensive interface definitions for iOS 16 CameraUI.framework
-//  Targeting iPhone 8 Plus (iOS 16.0 - 16.7.16, arm64)
+//  Complete defensive interfaces for iOS 16 CameraUI.framework
+//  Target: iPhone 8 Plus, iOS 16.0-16.7.x, arm64
 //
-//  RULE: Every private class that is assigned to a typed variable
-//  (UIView *, UIButton *, etc.) MUST have a full @interface declaration
-//  specifying its superclass. A bare @class forward-declaration is opaque
-//  (NSObject-width) and causes -Wincompatible-pointer-types hard errors.
+//  ARCHITECTURE RULE:
+//  Every class used in a typed pointer assignment MUST have a full
+//  @interface declaration with its real superclass, never a bare @class.
 //
 
 #import <UIKit/UIKit.h>
 #import <AVFoundation/AVFoundation.h>
+#import <Photos/Photos.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 // ---------------------------------------------------------------------------
-// Camera Modes (iOS 16 CameraUI)
+// MARK: - Enumerations
 // ---------------------------------------------------------------------------
+
 typedef NS_ENUM(NSInteger, CAMMode) {
     CAMModePhoto       = 0,
     CAMModeVideo       = 1,
@@ -29,21 +30,40 @@ typedef NS_ENUM(NSInteger, CAMMode) {
     CAMModePortrait    = 6
 };
 
-// Camera Device Positions
-typedef NS_ENUM(NSInteger, CAMDevicePosition) {
-    CAMDevicePositionBack  = 0,
-    CAMDevicePositionFront = 1
+typedef NS_ENUM(NSInteger, CAMCameraPosition) {
+    CAMCameraPositionBack  = 0,
+    CAMCameraPositionFront = 1
+};
+
+typedef NS_ENUM(NSInteger, CAMFlashMode) {
+    CAMFlashModeOff  = 0,
+    CAMFlashModeOn   = 1,
+    CAMFlashModeAuto = 2
 };
 
 // ---------------------------------------------------------------------------
-// Private CameraUI class interfaces (full declarations, not just @class)
+// MARK: - Simple View Subclass Declarations (needed for typed assignments)
 // ---------------------------------------------------------------------------
 
-// CUShutterButton — base shutter control inheriting from UIButton.
-// IMPORTANT: Do NOT redeclare 'state' here.
-// UIControl already declares: @property (nonatomic, readonly) UIControlState state;
-// (UIControlState = NSUInteger). Redeclaring it as NSInteger (signed, assign)
-// causes -Werror,-Wincompatible-property-type and aborts compilation.
+@interface CAMViewfinderView : UIView
+@end
+
+@interface CAMControlDrawer : UIView
+@end
+
+@interface CAMModeDial : UIView
+@end
+
+@interface CAMModeSelector : UIView
+@end
+
+// ---------------------------------------------------------------------------
+// MARK: - Button Subclasses
+// ---------------------------------------------------------------------------
+
+// NOTE: Do NOT redeclare UIControl's 'state' property.
+// UIControl declares: @property (nonatomic, readonly) UIControlState state;
+// Overriding type/atomicity causes -Werror,-Wincompatible-property-type.
 @interface CUShutterButton : UIButton
 @property (nonatomic, assign) NSInteger mode;
 @property (nonatomic, assign, getter=isSpinning) BOOL spinning;
@@ -56,45 +76,53 @@ typedef NS_ENUM(NSInteger, CAMDevicePosition) {
 @interface CAMFlipButton : UIButton
 @end
 
+@interface CAMFlashButton : UIButton
+@property (nonatomic, assign) NSInteger flashMode;
+@end
+
+@interface CAMLivePhotoButton : UIButton
+@property (nonatomic, assign, getter=isActive) BOOL active;
+@end
+
+@interface CAMTimerButton : UIButton
+@property (nonatomic, assign) NSInteger timerDuration;
+@end
+
+@interface CAMHDRButton : UIButton
+@end
+
 @interface CAMImageWell : UIButton
 @property (nonatomic, readonly, nullable) UIImageView *thumbnailImageView;
 - (void)setThumbnailImage:(nullable UIImage *)image animated:(BOOL)animated;
 - (nullable UIImage *)thumbnailImage;
 @end
 
-// CAMControlDrawer is a UIView subclass (drawer panel for creative controls).
-// Must be declared as UIView subclass so assignments to UIView * compile cleanly.
-@interface CAMControlDrawer : UIView
-@end
-
-// CAMModeDial is a UIView subclass.
-@interface CAMModeDial : UIView
-@end
-
-// CAMModeSelector is a UIView subclass.
-@interface CAMModeSelector : UIView
-@end
-
-// CAMFlashButton, CAMLivePhotoButton, CAMTimerButton are UIButton subclasses.
-@interface CAMFlashButton : UIButton
-@end
-
-@interface CAMLivePhotoButton : UIButton
-@end
-
-@interface CAMTimerButton : UIButton
-@end
+// ---------------------------------------------------------------------------
+// MARK: - Control / Compound Views
+// ---------------------------------------------------------------------------
 
 @interface CAMZoomControl : UIControl
 @property (nonatomic, assign) double zoomFactor;
 - (void)setZoomFactor:(double)factor animated:(BOOL)animated;
 @end
 
+// ---------------------------------------------------------------------------
+// MARK: - Capture Controller
+// ---------------------------------------------------------------------------
+
 @interface CAMCaptureController : NSObject
 @property (nonatomic, assign) double zoomFactor;
+@property (nonatomic, assign) NSInteger flashMode;
+@property (nonatomic, assign, getter=isHDREnabled) BOOL HDREnabled;
 - (void)setZoomFactor:(double)factor;
 - (void)changeToMode:(NSInteger)mode device:(NSInteger)device animated:(BOOL)animated;
+- (nullable AVCaptureDevice *)currentDevice;
+- (nullable AVCaptureDevice *)videoCaptureDevice;
 @end
+
+// ---------------------------------------------------------------------------
+// MARK: - Bar Views
+// ---------------------------------------------------------------------------
 
 @interface CAMBottomBar : UIView
 @property (nonatomic, strong, nullable) CUShutterButton *shutterButton;
@@ -107,10 +135,12 @@ typedef NS_ENUM(NSInteger, CAMDevicePosition) {
 @property (nonatomic, strong, nullable) CAMFlashButton *flashButton;
 @property (nonatomic, strong, nullable) CAMLivePhotoButton *livePhotoButton;
 @property (nonatomic, strong, nullable) CAMTimerButton *timerButton;
+@property (nonatomic, strong, nullable) CAMHDRButton *HDRButton;
 @end
 
-@interface CAMViewfinderView : UIView
-@end
+// ---------------------------------------------------------------------------
+// MARK: - Root Camera View Controller
+// ---------------------------------------------------------------------------
 
 @interface CAMViewfinderViewController : UIViewController
 @property (nonatomic, strong, nullable) CAMViewfinderView *viewfinderView;
@@ -124,6 +154,7 @@ typedef NS_ENUM(NSInteger, CAMDevicePosition) {
 @property (nonatomic, strong, nullable) CAMFlashButton *flashButton;
 @property (nonatomic, strong, nullable) CAMLivePhotoButton *livePhotoButton;
 @property (nonatomic, strong, nullable) CAMTimerButton *timerButton;
+@property (nonatomic, strong, nullable) CAMHDRButton *HDRButton;
 @property (nonatomic, strong, nullable) CAMCaptureController *captureController;
 @property (nonatomic, assign) NSInteger mode;
 
@@ -137,6 +168,7 @@ typedef NS_ENUM(NSInteger, CAMDevicePosition) {
 - (void)_livePhotoButtonReleased:(nullable id)sender;
 - (void)_timerButtonReleased:(nullable id)sender;
 - (void)_imageWellPressed:(nullable id)sender;
+- (void)_HDRButtonReleased:(nullable id)sender;
 - (void)_zoomControl:(nullable id)control didChangeZoomFactor:(double)factor;
 @end
 

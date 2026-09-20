@@ -2,45 +2,36 @@
 //  Camera27UI.h
 //  Camera27
 //
-//  Master overlay manager and container for Camera27 interface.
-//
 
 #import <UIKit/UIKit.h>
 #import "CameraPrivateHeaders.h"
-#import "Camera27Controls.h"
-#import "Camera27Zoom.h"
-#import "Camera27Modes.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface Camera27UI : NSObject <Camera27ZoomViewDelegate, Camera27ModeSwitcherDelegate, Camera27TopBarDelegate>
+@interface Camera27UI : NSObject
 
 @property (nonatomic, weak, nullable) CAMViewfinderViewController *viewfinderController;
-@property (nonatomic, strong, nullable) UIView *overlayContainerView;
-@property (nonatomic, strong, nullable) UIVisualEffectView *bottomGlassPanel;
-@property (nonatomic, strong, nullable) Camera27TopBar *topBar;
-@property (nonatomic, strong, nullable) Camera27ZoomView *zoomView;
-@property (nonatomic, strong, nullable) Camera27ModeSwitcher *modeSwitcher;
-@property (nonatomic, strong, nullable) Camera27ShutterButton *shutterButton;
-@property (nonatomic, strong, nullable) Camera27FlipButton *flipButton;
-@property (nonatomic, strong, nullable) Camera27ImageWell *galleryWell;
-@property (nonatomic, strong, nullable) UIButton *filterButton;
-@property (nonatomic, strong, nullable) UIButton *moreButton;
-@property (nonatomic, strong, nullable) UILabel *badge27;
+
+// Flash state cycling: 0=off, 1=on, 2=auto
+@property (nonatomic, assign) NSInteger flashState;
+// Live Photo
+@property (nonatomic, assign) BOOL livePhotoActive;
+// Timer: 0, 3, 10
+@property (nonatomic, assign) NSInteger timerDuration;
+// HDR
+@property (nonatomic, assign) BOOL hdrEnabled;
+// Current mode
+@property (nonatomic, assign) CAMMode currentMode;
+// Front facing?
+@property (nonatomic, assign) BOOL isFrontCamera;
 
 + (instancetype)sharedInstance;
-
-- (void)setupInViewController:(CAMViewfinderViewController *)viewController;
+- (void)setupInViewController:(CAMViewfinderViewController *)vc;
 - (void)hideLegacyStockUI;
 - (void)teardown;
-- (void)updateForCurrentMode:(CAMMode)mode animated:(BOOL)animated;
-
-// Action Handlers
-- (void)handleShutterPressed;
-- (void)handleFlipPressed;
-- (void)handleGalleryPressed;
-- (void)handleFilterPressed;
-- (void)handleMorePressed;
+- (void)syncMode:(CAMMode)mode animated:(BOOL)animated;
+- (void)syncZoomFactor:(double)factor;
+- (void)syncRecording:(BOOL)recording;
 
 @end
 

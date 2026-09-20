@@ -2,8 +2,6 @@
 //  Camera27Animations.h
 //  Camera27
 //
-//  Smooth micro-animations and haptic feedback utilities.
-//
 
 #import <UIKit/UIKit.h>
 
@@ -17,11 +15,11 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)playSuccessHaptic;
 
 + (void)animateSpringWithDuration:(NSTimeInterval)duration
-                       animations:(void (^)(void))animations
-                       completion:(nullable void (^)(BOOL finished))completion;
+                       animations:(void(^)(void))animations
+                       completion:(void(^ _Nullable)(BOOL finished))completion;
 
 + (void)pulseView:(UIView *)view scale:(CGFloat)scale duration:(NSTimeInterval)duration;
-+ (void)rotateFlipButton:(UIView *)view completion:(nullable void (^)(void))completion;
++ (void)rotateFlipButton:(UIView *)view completion:(void(^ _Nullable)(void))completion;
 
 @end
 

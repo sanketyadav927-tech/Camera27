@@ -2,8 +2,8 @@
 //  Camera27Zoom.m
 //  Camera27
 //
-//  Custom Zoom Control tailored for iPhone 8 Plus (1× Wide, 2× Telephoto).
-//  Explicitly excludes 0.5× Ultra Wide (not present on iPhone 8 Plus).
+//  Zoom selector for iPhone 8 Plus: 1× Wide + 2× Telephoto ONLY.
+//  0.5× Ultra Wide is explicitly absent on this hardware.
 //
 
 #import "Camera27Zoom.h"
@@ -12,13 +12,11 @@
 #import <AVFoundation/AVFoundation.h>
 
 @interface Camera27ZoomView ()
-
-@property (nonatomic, strong) UIView *pillBackground;
-@property (nonatomic, strong) UIView *selectionIndicator;
-@property (nonatomic, strong) UIButton *oneXButton;
-@property (nonatomic, strong) UIButton *twoXButton;
-@property (nonatomic, assign) BOOL hasTelephotoCamera;
-
+@property (nonatomic, strong) UIView *capsule;
+@property (nonatomic, strong) UIView *selectionBubble;
+@property (nonatomic, strong) UIButton *btn1x;
+@property (nonatomic, strong) UIButton *btn2x;
+@property (nonatomic, assign) BOOL hasTelephoto;
 @end
 
 @implementation Camera27ZoomView
@@ -27,154 +25,113 @@
     self = [super initWithFrame:frame];
     if (self) {
         _currentZoomFactor = 1.0;
-        _hasTelephotoCamera = YES; // iPhone 8 Plus default
-        [self updateAvailableLenses];
-        [self setupUI];
+        [self _detectLenses];
+        [self _build];
     }
     return self;
 }
 
-- (void)updateAvailableLenses {
-    // Dynamically detect hardware cameras: Wide (1x) and Telephoto (2x)
+- (void)_detectLenses {
+    // Runtime AVFoundation lens detection — never hardcode ultrawide on iPhone 8 Plus
+    _hasTelephoto = NO;
     if (@available(iOS 10.0, *)) {
-        NSArray *deviceTypes = @[
-            AVCaptureDeviceTypeBuiltInWideAngleCamera,
-            AVCaptureDeviceTypeBuiltInTelephotoCamera
-        ];
-        AVCaptureDeviceDiscoverySession *session = [AVCaptureDeviceDiscoverySession
-            discoverySessionWithDeviceTypes:deviceTypes
+        AVCaptureDeviceDiscoverySession *s = [AVCaptureDeviceDiscoverySession
+            discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInTelephotoCamera]
                                   mediaType:AVMediaTypeVideo
                                    position:AVCaptureDevicePositionBack];
-        
-        BOOL foundTelephoto = NO;
-        for (AVCaptureDevice *device in session.devices) {
-            if ([device.deviceType isEqualToString:AVCaptureDeviceTypeBuiltInTelephotoCamera]) {
-                foundTelephoto = YES;
-                break;
-            }
-        }
-        _hasTelephotoCamera = foundTelephoto;
+        _hasTelephoto = (s.devices.count > 0);
     }
 }
 
-- (void)setupUI {
-    self.backgroundColor = [UIColor clearColor];
+- (void)_build {
+    self.backgroundColor = UIColor.clearColor;
 
-    // Background pill
-    self.pillBackground = [[UIView alloc] initWithFrame:self.bounds];
-    self.pillBackground.layer.cornerRadius = self.bounds.size.height / 2.0;
-    self.pillBackground.layer.masksToBounds = YES;
-    
-    if ([Camera27Settings sharedSettings].glassUIEnabled) {
-        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
-        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-        blurView.frame = self.pillBackground.bounds;
-        blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        blurView.userInteractionEnabled = NO;
-        [self.pillBackground addSubview:blurView];
-    } else {
-        self.pillBackground.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.5];
+    // Liquid glass capsule
+    self.capsule = [[UIView alloc] initWithFrame:self.bounds];
+    self.capsule.layer.cornerRadius = self.bounds.size.height / 2.0;
+    self.capsule.layer.masksToBounds = YES;
+    self.capsule.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.25].CGColor;
+    self.capsule.layer.borderWidth = 0.75;
+    [self addSubview:self.capsule];
+
+    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+    UIVisualEffectView *blurV = [[UIVisualEffectView alloc] initWithEffect:blur];
+    blurV.frame = self.capsule.bounds;
+    blurV.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    blurV.userInteractionEnabled = NO;
+    [self.capsule addSubview:blurV];
+
+    // Selection bubble
+    CGFloat pad = 3, h = self.bounds.size.height, bSize = h - pad * 2;
+    CGFloat halfW = self.bounds.size.width / (_hasTelephoto ? 2.0 : 1.0);
+    self.selectionBubble = [[UIView alloc] initWithFrame:CGRectMake((halfW - bSize)/2, pad, bSize, bSize)];
+    self.selectionBubble.layer.cornerRadius = bSize / 2;
+    self.selectionBubble.backgroundColor = [UIColor colorWithWhite:1 alpha:0.22];
+    self.selectionBubble.userInteractionEnabled = NO;
+    [self.capsule addSubview:self.selectionBubble];
+
+    // 1× button
+    self.btn1x = [self _makeZoomButton:@"1×" frame:CGRectMake(0, 0, halfW, h)];
+    [self.btn1x addTarget:self action:@selector(_tap1x) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:self.btn1x];
+
+    if (_hasTelephoto) {
+        self.btn2x = [self _makeZoomButton:@"2×" frame:CGRectMake(halfW, 0, halfW, h)];
+        [self.btn2x addTarget:self action:@selector(_tap2x) forControlEvents:UIControlEventTouchUpInside];
+        [self addSubview:self.btn2x];
     }
-    
-    self.pillBackground.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.15].CGColor;
-    self.pillBackground.layer.borderWidth = 0.5;
-    [self addSubview:self.pillBackground];
 
-    CGFloat itemWidth = self.bounds.size.width / 2.0;
-    CGFloat height = self.bounds.size.height;
-
-    // Selection bubble indicator
-    CGFloat indicatorPadding = 3.0;
-    CGFloat indicatorSize = height - (indicatorPadding * 2.0);
-    self.selectionIndicator = [[UIView alloc] initWithFrame:CGRectMake(
-        (itemWidth - indicatorSize) / 2.0,
-        indicatorPadding,
-        indicatorSize,
-        indicatorSize
-    )];
-    self.selectionIndicator.layer.cornerRadius = indicatorSize / 2.0;
-    self.selectionIndicator.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.25];
-    self.selectionIndicator.userInteractionEnabled = NO;
-    [self.pillBackground addSubview:self.selectionIndicator];
-
-    // 1x Button
-    self.oneXButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    self.oneXButton.frame = CGRectMake(0, 0, itemWidth, height);
-    [self.oneXButton setTitle:@"1×" forState:UIControlStateNormal];
-    self.oneXButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
-    [self.oneXButton setTitleColor:[UIColor colorWithRed:0.95 green:0.75 blue:0.25 alpha:1.0] forState:UIControlStateNormal];
-    [self.oneXButton addTarget:self action:@selector(handleOneXTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self addSubview:self.oneXButton];
-
-    // 2x Button (Only if telephoto hardware is present)
-    if (self.hasTelephotoCamera) {
-        self.twoXButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        self.twoXButton.frame = CGRectMake(itemWidth, 0, itemWidth, height);
-        [self.twoXButton setTitle:@"2×" forState:UIControlStateNormal];
-        self.twoXButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-        [self.twoXButton setTitleColor:[UIColor colorWithWhite:0.8 alpha:1.0] forState:UIControlStateNormal];
-        [self.twoXButton addTarget:self action:@selector(handleTwoXTapped) forControlEvents:UIControlEventTouchUpInside];
-        [self addSubview:self.twoXButton];
-    } else {
-        // Fallback for single camera / front camera
-        self.oneXButton.frame = self.bounds;
-        self.selectionIndicator.frame = CGRectMake(
-            (self.bounds.size.width - indicatorSize) / 2.0,
-            indicatorPadding,
-            indicatorSize,
-            indicatorSize
-        );
-    }
+    [self _applySelection:1.0 animated:NO];
 }
 
-- (void)handleOneXTapped {
+- (UIButton *)_makeZoomButton:(NSString *)title frame:(CGRect)frame {
+    UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
+    btn.frame = frame;
+    [btn setTitle:title forState:UIControlStateNormal];
+    btn.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBold];
+    [btn setTitleColor:[UIColor colorWithWhite:0.8 alpha:1] forState:UIControlStateNormal];
+    return btn;
+}
+
+- (void)_tap1x {
     [self setSelectedZoomFactor:1.0 animated:YES];
-    if ([self.delegate respondsToSelector:@selector(zoomView:didSelectZoomFactor:)]) {
+    if ([self.delegate respondsToSelector:@selector(zoomView:didSelectZoomFactor:)])
         [self.delegate zoomView:self didSelectZoomFactor:1.0];
-    }
 }
 
-- (void)handleTwoXTapped {
+- (void)_tap2x {
     [self setSelectedZoomFactor:2.0 animated:YES];
-    if ([self.delegate respondsToSelector:@selector(zoomView:didSelectZoomFactor:)]) {
+    if ([self.delegate respondsToSelector:@selector(zoomView:didSelectZoomFactor:)])
         [self.delegate zoomView:self didSelectZoomFactor:2.0];
-    }
 }
 
 - (void)setSelectedZoomFactor:(CGFloat)factor animated:(BOOL)animated {
     _currentZoomFactor = factor;
+    void(^upd)(void) = ^{ [self _applySelection:factor animated:NO]; };
+    animated ? [Camera27Animations animateSpringWithDuration:0.32 animations:upd completion:nil] : upd();
+}
+
+- (void)_applySelection:(CGFloat)factor animated:(BOOL)__unused a {
     [Camera27Animations playLightHaptic];
+    CGFloat halfW = self.bounds.size.width / (_hasTelephoto ? 2.0 : 1.0);
+    CGFloat pad = 3, bSize = self.bounds.size.height - pad * 2;
+    UIColor *gold = [UIColor colorWithRed:0.95 green:0.78 blue:0.28 alpha:1];
+    UIColor *dim  = [UIColor colorWithWhite:0.72 alpha:1];
 
-    CGFloat itemWidth = self.bounds.size.width / 2.0;
-    CGFloat indicatorPadding = 3.0;
-    CGFloat indicatorSize = self.bounds.size.height - (indicatorPadding * 2.0);
-
-    CGRect targetFrame;
-    if (factor >= 2.0 && self.hasTelephotoCamera) {
-        targetFrame = CGRectMake(itemWidth + (itemWidth - indicatorSize) / 2.0, indicatorPadding, indicatorSize, indicatorSize);
+    if (factor >= 2.0 && _hasTelephoto) {
+        self.selectionBubble.frame = CGRectMake(halfW + (halfW - bSize)/2, pad, bSize, bSize);
+        [self.btn1x setTitleColor:dim  forState:UIControlStateNormal];
+        self.btn1x.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+        [self.btn2x setTitleColor:gold forState:UIControlStateNormal];
+        self.btn2x.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBold];
     } else {
-        targetFrame = CGRectMake((itemWidth - indicatorSize) / 2.0, indicatorPadding, indicatorSize, indicatorSize);
-    }
-
-    void (^updateVisuals)(void) = ^{
-        self.selectionIndicator.frame = targetFrame;
-        if (factor >= 2.0) {
-            [self.oneXButton setTitleColor:[UIColor colorWithWhite:0.8 alpha:1.0] forState:UIControlStateNormal];
-            self.oneXButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-            [self.twoXButton setTitleColor:[UIColor colorWithRed:0.95 green:0.75 blue:0.25 alpha:1.0] forState:UIControlStateNormal];
-            self.twoXButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
-        } else {
-            [self.oneXButton setTitleColor:[UIColor colorWithRed:0.95 green:0.75 blue:0.25 alpha:1.0] forState:UIControlStateNormal];
-            self.oneXButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
-            [self.twoXButton setTitleColor:[UIColor colorWithWhite:0.8 alpha:1.0] forState:UIControlStateNormal];
-            self.twoXButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+        self.selectionBubble.frame = CGRectMake((halfW - bSize)/2, pad, bSize, bSize);
+        [self.btn1x setTitleColor:gold forState:UIControlStateNormal];
+        self.btn1x.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBold];
+        if (self.btn2x) {
+            [self.btn2x setTitleColor:dim forState:UIControlStateNormal];
+            self.btn2x.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
         }
-    };
-
-    if (animated) {
-        [Camera27Animations animateSpringWithDuration:0.35 animations:updateVisuals completion:nil];
-    } else {
-        updateVisuals();
     }
 }
 

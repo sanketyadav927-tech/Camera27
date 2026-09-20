@@ -11,77 +11,54 @@
 + (instancetype)sharedSettings {
     static Camera27Settings *shared = nil;
     static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        shared = [[Camera27Settings alloc] init];
-    });
+    dispatch_once(&onceToken, ^{ shared = [Camera27Settings new]; });
     return shared;
 }
 
 - (instancetype)init {
     self = [super init];
     if (self) {
-        // Defaults
-        _enabled = YES;
-        _glassUIEnabled = YES;
+        _enabled           = YES;
+        _liquidGlassEnabled = YES;
         _animationsEnabled = YES;
-        _hapticsEnabled = YES;
-        _appearanceMode = 0; // Dark mode by default
-
+        _hapticsEnabled    = YES;
+        _appearanceMode    = 0;
         [self loadPreferences];
-        [self registerForPreferenceChanges];
+        [self _registerForChanges];
     }
     return self;
 }
 
 - (void)loadPreferences {
-    // Check rootless preferences path first, then fallback to standard path
-    NSString *rootlessPath = @"/var/jb/Library/Preferences/com.yourname.camera27.plist";
-    NSString *standardPath = @"/var/mobile/Library/Preferences/com.yourname.camera27.plist";
-    
-    NSString *activePath = rootlessPath;
-    if (![[NSFileManager defaultManager] fileExistsAtPath:rootlessPath]) {
-        if ([[NSFileManager defaultManager] fileExistsAtPath:standardPath]) {
-            activePath = standardPath;
+    // Try rootless path first, fall back to standard
+    NSString *paths[] = {
+        @"/var/jb/Library/Preferences/com.yourname.camera27.plist",
+        @"/var/mobile/Library/Preferences/com.yourname.camera27.plist"
+    };
+    NSDictionary *prefs = nil;
+    for (int i = 0; i < 2; i++) {
+        if ([[NSFileManager defaultManager] fileExistsAtPath:paths[i]]) {
+            prefs = [NSDictionary dictionaryWithContentsOfFile:paths[i]];
+            if (prefs) break;
         }
     }
-
-    NSDictionary *prefs = [NSDictionary dictionaryWithContentsOfFile:activePath];
-    if (prefs) {
-        if (prefs[@"Enabled"] != nil) {
-            self.enabled = [prefs[@"Enabled"] boolValue];
-        }
-        if (prefs[@"GlassUI"] != nil) {
-            self.glassUIEnabled = [prefs[@"GlassUI"] boolValue];
-        }
-        if (prefs[@"Animations"] != nil) {
-            self.animationsEnabled = [prefs[@"Animations"] boolValue];
-        }
-        if (prefs[@"Haptics"] != nil) {
-            self.hapticsEnabled = [prefs[@"Haptics"] boolValue];
-        }
-        if (prefs[@"Appearance"] != nil) {
-            self.appearanceMode = [prefs[@"Appearance"] integerValue];
-        }
-    }
+    if (!prefs) return;
+    if (prefs[@"Enabled"])      self.enabled           = [prefs[@"Enabled"] boolValue];
+    if (prefs[@"LiquidGlass"])  self.liquidGlassEnabled = [prefs[@"LiquidGlass"] boolValue];
+    if (prefs[@"Animations"])   self.animationsEnabled = [prefs[@"Animations"] boolValue];
+    if (prefs[@"Haptics"])      self.hapticsEnabled    = [prefs[@"Haptics"] boolValue];
+    if (prefs[@"Appearance"])   self.appearanceMode    = [prefs[@"Appearance"] integerValue];
 }
 
-static void prefsNotificationCallback(CFNotificationCenterRef center,
-                                      void *observer,
-                                      CFStringRef name,
-                                      const void *object,
-                                      CFDictionaryRef userInfo) {
+static void _prefsChanged(CFNotificationCenterRef c, void *o, CFStringRef n, const void *obj, CFDictionaryRef i) {
     [[Camera27Settings sharedSettings] loadPreferences];
 }
 
-- (void)registerForPreferenceChanges {
+- (void)_registerForChanges {
     CFNotificationCenterAddObserver(
-        CFNotificationCenterGetDarwinNotifyCenter(),
-        NULL,
-        prefsNotificationCallback,
-        CFSTR(kCamera27PrefsChangedNotification),
-        NULL,
-        CFNotificationSuspensionBehaviorDeliverImmediately
-    );
+        CFNotificationCenterGetDarwinNotifyCenter(), NULL, _prefsChanged,
+        CFSTR(kCamera27PrefsChangedNotification), NULL,
+        CFNotificationSuspensionBehaviorDeliverImmediately);
 }
 
 @end
