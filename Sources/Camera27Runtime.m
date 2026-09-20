@@ -2,6 +2,19 @@
 #import <AVFoundation/AVFoundation.h>
 #import <objc/message.h>
 
+static void Camera27AppendDiagnostic(NSString *message) {
+    NSString *path = @"/var/mobile/Library/Logs/Camera27.log";
+    NSString *line = [NSString stringWithFormat:@"%@ %@\n", NSDate.date, message];
+    NSFileHandle *handle = [NSFileHandle fileHandleForWritingAtPath:path];
+    if (!handle) {
+        [line writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        return;
+    }
+    [handle seekToEndOfFile];
+    [handle writeData:[line dataUsingEncoding:NSUTF8StringEncoding]];
+    [handle closeFile];
+}
+
 static NSArray<UIView *> *Camera27AllViews(UIView *root) {
     NSMutableArray *result = [NSMutableArray array];
     NSMutableArray *pending = [NSMutableArray arrayWithObject:root];
@@ -94,9 +107,11 @@ void Camera27HideVerifiedStockChrome(UIViewController *controller) {
 
 void Camera27LogDiagnosticReport(UIViewController *controller) {
     NSLog(@"[Camera27] controller=%@", NSStringFromClass(controller.class));
+    Camera27AppendDiagnostic([NSString stringWithFormat:@"controller=%@", NSStringFromClass(controller.class)]);
     for (UIView *view in Camera27AllViews(controller.view)) {
         if (![view isKindOfClass:UIControl.class]) continue;
         UIControl *control = (UIControl *)view;
         NSLog(@"[Camera27] control=%@ id=%@ label=%@ targets=%@", NSStringFromClass(control.class), control.accessibilityIdentifier, control.accessibilityLabel, control.allTargets);
+        Camera27AppendDiagnostic([NSString stringWithFormat:@"control=%@ id=%@ label=%@ targets=%@", NSStringFromClass(control.class), control.accessibilityIdentifier, control.accessibilityLabel, control.allTargets]);
     }
 }
